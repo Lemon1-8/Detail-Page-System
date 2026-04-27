@@ -1,26 +1,50 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-primary: #8b5cf6;
+  --color-primary-hover: #7c3aed;
+  --color-active-bg: #ecfccb; /* lime-100 */
+  --color-active-text: #4d7c0f; /* lime-700 */
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* 隐藏部分滚动条，保持应用界面清爽 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #d1d5db;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* 过渡动画 */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.screen-card {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Loading Spin */
+.spinner {
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  border-top: 2px solid currentColor;
+  width: 16px;
+  height: 16px;
+  -webkit-animation: spin 1s linear infinite;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
