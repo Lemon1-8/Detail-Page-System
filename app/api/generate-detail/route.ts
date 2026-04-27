@@ -8,9 +8,9 @@ dns.setDefaultResultOrder("ipv4first");
 export const maxDuration = 120;
 
 const CONFIG = {
-  baseURL: "https://api.vectorengine.cn/v1",
-  apiKey: "sk-1cx2j3KDjid49qdtmmG59JczVVcSfNvY5G0GjukbspuJfpGr",
-  model: "gemini-3-pro-image-preview"
+  baseURL: process.env.API_BASE_URL!,
+  apiKey: process.env.API_KEY!,
+  model: process.env.GENERATE_API_MODEL || "gemini-3-pro-image-preview"
 };
 
 // 服务端压缩图片：把 base64 data URL 缩到指定尺寸和质量

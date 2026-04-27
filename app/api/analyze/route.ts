@@ -8,9 +8,9 @@ dns.setDefaultResultOrder("ipv4first");
 export const maxDuration = 240;
 
 const CONFIG = {
-  baseURL: "https://api.vectorengine.cn/v1",
-  apiKey: "sk-1cx2j3KDjid49qdtmmG59JczVVcSfNvY5G0GjukbspuJfpGr",
-  model: "gemini-3.1-flash-lite-preview"
+  baseURL: process.env.API_BASE_URL!,
+  apiKey: process.env.API_KEY!,
+  model: process.env.ANALYZE_API_MODEL || "gemini-3.1-flash-lite-preview"
 };
 
 // 完整 JSON schema — 始终请求全部字段供出图使用
