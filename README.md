@@ -89,16 +89,6 @@ npm start
 
 ## 输入图
 
-<img src=".\image_test\PixPin_2026-04-22_17-18-27.png" style="zoom:25%;" />
-
-<img src=".\image_test\PixPin_2026-04-22_17-18-35.png" alt="PixPin_2026-04-22_17-18-35" style="zoom:25%;" />
-
-## 结果图
-
-<img src="./image/AI-Detail-1777258858436.png" style="zoom: 50%;" />
-
-## 输入图
-
 <img src=".\image_test\PixPin_2026-04-27_11-00-29.png" style="zoom: 33%;" />
 
 ## 结果图
