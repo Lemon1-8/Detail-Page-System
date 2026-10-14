@@ -67,6 +67,14 @@ ANALYZE_API_MODEL=gemini-3.1-flash-lite-preview
 - **样式**: Tailwind CSS
 - **图标**: Lucide React
 
+## 系统架构
+
+架构图展示浏览器端、Next.js API 路由与外部 AI 服务之间的请求链路，以及本地历史记录和长图导出路径。
+
+![AI 详情页生成器系统架构图](docs/architecture.png)
+
+[查看架构图源文件（HTML）](docs/architecture.html)
+
 ## 项目结构
 
 ```
