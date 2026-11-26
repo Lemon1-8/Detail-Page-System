@@ -495,7 +495,8 @@ export default function App() {
                 className="w-full border border-gray-200 rounded-md p-2 text-sm focus:outline-none focus:border-purple-400"
               />
               <p id="api-base-url-help" className="text-xs text-gray-500 mt-2 leading-relaxed">
-                分析和出图共用此地址。仅填写您信任的 HTTPS 模型 API 地址，该服务将收到您的 Key 和图片。
+                分析使用 gpt-6.1-sol，生图使用 gpt-image-2，共用此地址和 Key。
+                仅填写您信任的 HTTPS 服务地址，该服务将收到您的 Key 和图片。
               </p>
             </div>
 
@@ -785,7 +786,7 @@ export default function App() {
                            <div className="flex flex-col items-center justify-center py-32 text-gray-400">
                              <Loader2 size={32} className="animate-spin mb-3" />
                              <span className="text-sm">AI 正在生成「{screen.title}」...</span>
-                             <span className="text-xs text-gray-300 mt-1">通常需要 10-30 秒</span>
+                             <span className="text-xs text-gray-300 mt-1">生成可能需要数分钟，请耐心等待</span>
                            </div>
                          )}
                          

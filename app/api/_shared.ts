@@ -64,8 +64,14 @@ export async function readAIRequest(request: Request) {
   return { apiKey, apiBaseUrl, body: body as { images: string[]; [key: string]: unknown } };
 }
 
-export function aiErrorResponse(error: unknown) {
+export function aiErrorResponse(error: unknown, model?: string) {
   const status = error instanceof OpenAI.APIError ? error.status : undefined;
+  if (error instanceof OpenAI.APIConnectionTimeoutError || error instanceof OpenAI.APIUserAbortError) {
+    return Response.json({ error: "模型服务请求超时，请稍后重试或减少图片数量" }, { status: 504, headers: NO_STORE });
+  }
+  if (error instanceof OpenAI.APIError && error.code === "model_not_found") {
+    return Response.json({ error: `当前 Key 分组或 API 地址没有可用的 ${model || "所需模型"} 通道，请检查模型权限或更换 Key / 服务地址` }, { status: 400, headers: NO_STORE });
+  }
   // 上游异常可能包含请求头或密钥，只返回固定文案，不记录原始异常。
   if (status === 401 || status === 403) {
     return Response.json({ error: "API Key 无效或没有模型访问权限，请检查后重试" }, { status: 401, headers: NO_STORE });

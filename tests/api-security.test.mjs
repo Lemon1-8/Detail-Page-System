@@ -97,6 +97,25 @@ test("浏览器只将 Key 放入请求头，且能处理 Vercel 的非 JSON 错�
   }
 });
 
+test("无可用模型通道时说明模型权限问题，且不泄露上游凭据", async () => {
+  const secret = "test-upstream-secret";
+  const error = new OpenAI.APIError(503, { code: "model_not_found", message: secret }, secret, new Headers());
+  const response = aiErrorResponse(error, "gpt-6.1-sol");
+  assert.equal(response.status, 400);
+  const body = await response.text();
+  assert.ok(body.includes("gpt-6.1-sol"));
+  assert.ok(body.includes("通道"));
+  assert.equal(body.includes(secret), false);
+});
+
+test("请求超时与模型权限错误分开提示", async () => {
+  for (const error of [new OpenAI.APIConnectionTimeoutError(), new OpenAI.APIUserAbortError()]) {
+    const response = aiErrorResponse(error, "gpt-6.1-sol");
+    assert.equal(response.status, 504);
+    assert.ok((await response.json()).error.includes("超时"));
+  }
+});
+
 test("地址默认值与规范化，拒绝本机、IP、非 HTTPS 及 URL 中的凭据", async () => {
   assert.equal(DEFAULT_API_BASE_URL, "https://www.boxying.com/v1");
   assert.equal(normalizeApiBaseUrl(" https://custom.example:8443/api/v1/// "), "https://custom.example:8443/api/v1");

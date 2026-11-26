@@ -24,7 +24,9 @@ npm run dev
 
 ## 环境配置
 
-访客在页面中填写 API 请求地址和自己的 API Key。请求地址默认预填 `https://www.boxying.com/v1`，可改为其他兼容服务的 HTTPS 公网域名；分析和出图共用这组配置，无需为部署配置共享 Key。Key 只保留在当前页面内存中，刷新或点击“清除”后移除，不写入 localStorage、历史记录或服务端存储。
+访客在页面中填写 API 请求地址和自己的 API Key。地址默认预填 `https://www.boxying.com/v1`，可改为其他兼容服务的 HTTPS 公网域名。分析模型为 `gpt-6.1-sol`，生图模型为 `gpt-image-2`，共用这组配置；Key 必须同时有这两个模型的权限。
+
+无需为部署配置共享 Key。Key 只保留在当前页面内存中，刷新或点击“清除”后移除，不写入 localStorage、历史记录或服务端存储。
 
 Key 经 HTTPS 请求头传到本站后端，再转发至用户填写的模型服务；不会放入网页源码、URL 或错误日志。模型服务将收到 Key 和图片，请只使用自己信任的服务地址。后端禁止内网和保留 IP，并在建立连接时校验 DNS 结果；不跟随上游重定向。Key 的持有人仍可通过自己浏览器的开发者工具查看自己的请求，这是正常行为。
 
@@ -39,16 +41,16 @@ cp .env.example .env
 
 ```env
 # 模型配置
-GENERATE_API_MODEL=gemini-3-pro-image-preview
-ANALYZE_API_MODEL=gemini-3.1-flash-lite-preview
+GENERATE_API_MODEL=gpt-image-2
+ANALYZE_API_MODEL=gpt-6.1-sol
 ```
 
 ### 环境变量说明
 
 | 变量名 | 必填 | 说明 |
 |--------|------|------|
-| `GENERATE_API_MODEL` | 否 | 生成详情页使用的模型，默认 `gemini-3-pro-image-preview` |
-| `ANALYZE_API_MODEL` | 否 | 分析图片使用的模型，默认 `gemini-3.1-flash-lite-preview` |
+| `GENERATE_API_MODEL` | 否 | 生图模型，默认 `gpt-image-2`，使用 `/v1/images/edits` 上传参考图并接收 Base64 图片 |
+| `ANALYZE_API_MODEL` | 否 | 图片分析模型，默认 `gpt-6.1-sol`，使用 `/v1/chat/completions` 流式读取，整理为结构化文案后返回页面 |
 
 ## 注意事项
 
@@ -60,7 +62,7 @@ ANALYZE_API_MODEL=gemini-3.1-flash-lite-preview
 ## 部署到 Vercel
 
 1. 将本次代码提交并推送到 GitHub，在 [Vercel 新建项目](https://vercel.com/new) 中导入仓库，框架选择 Next.js，构建命令保留 `npm run build`，输出目录使用默认值。
-2. 无需配置服务地址或 API Key，由访客在页面填写。只有更换模型时，才填写上述两个非密钥环境变量；填写的服务须支持相应模型及 OpenAI 兼容接口。
+2. 无需配置服务地址或 API Key，由访客在页面填写。只有更换模型时，才填写上述两个非密钥环境变量；服务须同时支持 Chat Completions 图片输入和 Images Edits 多图上传。仅有生图分组权限的 Key 无法完成分析步骤。
 3. 点击 Deploy，成功后使用项目的正式域名 `项目名.vercel.app` 分享。
 4. 在 Settings → Deployment Protection 中确认正式域名可匿名访问。Standard Protection 会保护预览和部署地址，同时允许正式域名公开访问；All Deployments 会保护正式域名。
 5. 也可在本机登录后运行 `npx vercel@latest --prod` 发布；`.vercelignore` 已排除本地 `.env`、图片素材和测试文件。

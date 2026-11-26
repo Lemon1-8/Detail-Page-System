@@ -1,15 +1,14 @@
-import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import OpenAI, { toFile } from "openai";
 import sharp from "sharp";
 import dns from "dns";
-import { aiErrorResponse, apiFetchOptions, readAIRequest } from "../_shared";
+import { aiErrorResponse, apiFetchOptions, readAIRequest } from "../_shared.ts";
 
 dns.setDefaultResultOrder("ipv4first");
 
 export const maxDuration = 240;
 
 const CONFIG = {
-  model: process.env.GENERATE_API_MODEL || "gemini-3-pro-image-preview"
+  model: process.env.GENERATE_API_MODEL || "gpt-image-2"
 };
 
 // 服务端压缩图片：把 base64 data URL 缩到指定尺寸和质量
@@ -76,7 +75,7 @@ function buildScreenPrompt(
 
   const constraints = `
 === CONSTRAINTS ===
-- Portrait orientation, 750×1334 pixels
+- Portrait orientation, 1024×1536 pixels
 - High-end editorial e-commerce product detail page
 - Keep the product EXACTLY as-is, do NOT redraw or modify the product appearance
 - DESIGN RULE: Text Function Segregation. Large decorative titles/tags can be vertical, massive, overlapping, or cropped to create visual tension. HOWEVER, informational body copy/paragraphs MUST maintain grounded horizontal legibility.
@@ -185,14 +184,14 @@ export async function POST(request: Request) {
     const { images, analysis, screenType } = input.body;
     if (analysis !== undefined && analysis !== null &&
         (typeof analysis !== "object" || Array.isArray(analysis))) {
-      return NextResponse.json(
+      return Response.json(
         { error: "产品分析数据格式不正确" },
         { status: 400 }
       );
     }
 
     if (typeof screenType !== "string" || !["cover", "showcase", "display", "material", "details", "specs"].includes(screenType)) {
-      return NextResponse.json(
+      return Response.json(
         { error: "请选择有效的详情页模块" },
         { status: 400 }
       );
@@ -216,15 +215,13 @@ export async function POST(request: Request) {
     };
 
     const indices = imageIndices[screenType] || [0];
-    const imageContents: any[] = [];
-    for (const idx of indices) {
-      if (compressedImages[idx]) {
-        imageContents.push({
-          type: "image_url" as const,
-          image_url: { url: compressedImages[idx] }
-        });
-      }
-    }
+    const referenceImages = indices.filter(index => compressedImages[index]);
+    // 部分模块引用细节图；只上传一张图片时仍需保留主参考图。
+    if (referenceImages.length === 0) referenceImages.push(0);
+    const files = await Promise.all(referenceImages.map(index => {
+      const base64 = compressedImages[index].split(",")[1];
+      return toFile(Buffer.from(base64, "base64"), `reference-${index}.jpg`, { type: "image/jpeg" });
+    }));
 
     const openai = new OpenAI({
       baseURL: input.apiBaseUrl,
@@ -238,39 +235,26 @@ export async function POST(request: Request) {
       }
     });
 
-    const response = await openai.chat.completions.create({
+    const response = await openai.images.edit({
       model: CONFIG.model,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            ...imageContents
-          ]
-        }
-      ]
-    });
+      image: files,
+      prompt,
+      n: 1,
+      size: "1024x1536",
+      quality: "medium",
+      output_format: "jpeg",
+      output_compression: 85,
+    }, { signal: AbortSignal.timeout(210 * 1000) });
 
-    const content = response.choices?.[0]?.message?.content;
-
-    if (!content) {
-      return NextResponse.json(
-        { error: "AI 未返回内容" },
-        { status: 500 }
-      );
-    }
-
-    // 从响应中提取 base64 图片
-    const imgMatch = content.match(/data:image\/([\w]+);base64,([A-Za-z0-9+/=\s]+)/);
-    if (!imgMatch) {
-      return NextResponse.json(
+    const imageBase64 = response.data?.[0]?.b64_json;
+    if (!imageBase64) {
+      return Response.json(
         { error: "AI 响应中未找到图片数据" },
         { status: 500 }
       );
     }
 
-    const imageFormat = imgMatch[1];
-    const imageBase64 = imgMatch[2].replace(/\s/g, "");
+    const imageFormat = (await sharp(Buffer.from(imageBase64, "base64")).metadata()).format;
     let dataUrl = `data:image/${imageFormat};base64,${imageBase64}`;
     // Vercel 普通响应上限为 4.5 MB，为 JSON 和提示词留出余量。
     if (dataUrl.length > 3_500_000) {
@@ -283,11 +267,11 @@ export async function POST(request: Request) {
     }
 
     if (Buffer.byteLength(JSON.stringify({ image: dataUrl, prompt }), "utf8") > 4_000_000) {
-      return NextResponse.json({ error: "生成结果体积过大，请减少图片或模块内容后重试" }, { status: 502 });
+      return Response.json({ error: "生成结果体积过大，请减少图片或模块内容后重试" }, { status: 502 });
     }
-    return NextResponse.json({ image: dataUrl, prompt }, { headers: { "Cache-Control": "no-store" } });
+    return Response.json({ image: dataUrl, prompt }, { headers: { "Cache-Control": "no-store" } });
 
   } catch (error: unknown) {
-    return aiErrorResponse(error);
+    return aiErrorResponse(error, CONFIG.model);
   }
 }

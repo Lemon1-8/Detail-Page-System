@@ -1,7 +1,6 @@
-import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import dns from "dns";
-import { aiErrorResponse, apiFetchOptions, readAIRequest } from "../_shared";
+import { aiErrorResponse, apiFetchOptions, readAIRequest } from "../_shared.ts";
 
 // 强制 IPv4 解析，避免代理节点 IPv6 黑洞
 dns.setDefaultResultOrder("ipv4first");
@@ -9,7 +8,7 @@ dns.setDefaultResultOrder("ipv4first");
 export const maxDuration = 240;
 
 const CONFIG = {
-  model: process.env.ANALYZE_API_MODEL || "gemini-3.1-flash-lite-preview"
+  model: process.env.ANALYZE_API_MODEL || "gpt-6.1-sol"
 };
 
 // 完整 JSON schema — 始终请求全部字段供出图使用
@@ -53,7 +52,7 @@ export async function POST(request: Request) {
     const { images, platform, market, language, visualStyle } = input.body;
     if ([platform, market, language, visualStyle].some(value =>
       value !== undefined && (typeof value !== "string" || value.length > 500))) {
-      return NextResponse.json(
+      return Response.json(
         { error: "市场配置格式不正确" },
         { status: 400 }
       );
@@ -66,9 +65,6 @@ export async function POST(request: Request) {
       logLevel: "off",
       timeout: 210 * 1000,
       maxRetries: 0,
-      defaultHeaders: {
-        "Connection": "close"
-      }
     });
 
     const usedPlatform = platform || "淘宝";
@@ -97,6 +93,7 @@ ${FULL_SCHEMA}
    要考虑：什么风格能最大化这个产品的视觉吸引力和高级感？
    colorPalette 中所有颜色必须是有效的 hex 色值（如 #1a1a2e）。
 9. 排布随机性与突破性：每次生成必须从 layoutApproach 候选池中挑选一种特定的高级排版手段。通过结构变化（留白、阶梯排布、大字出血叠底等）来制造视觉冲击力，坚决避免简单粗暴地把所有文字和图片做全局倾斜。在保持构图创意性的同时，提供克制的高水平排版。
+10. 保持输出简洁：卖点只输出3条，各描述不超过30字，情感文案不超过50字；不要输出思考过程或额外说明。
 请直接返回 JSON 数据，不要包含 markdown 标记或任何其他说明文字。`;
 
     // 构建多图内容数组
@@ -105,8 +102,12 @@ ${FULL_SCHEMA}
       image_url: { url: imgBase64 }
     }));
 
+    const deadline = AbortSignal.timeout(210 * 1000);
     const response = await openai.chat.completions.create({
       model: CONFIG.model,
+      reasoning_effort: "low",
+      max_completion_tokens: 4096,
+      stream: true,
       messages: [
         { role: "system", content: systemPrompt },
         {
@@ -118,9 +119,22 @@ ${FULL_SCHEMA}
         },
       ],
       response_format: { type: "json_object" },
-    });
+    }, { signal: deadline });
 
-    const content = response.choices[0]?.message?.content;
+    let content = "";
+    let finishReason;
+    for await (const chunk of response) {
+      const choice = chunk.choices[0];
+      content += choice?.delta?.content || "";
+      if (choice?.finish_reason) {
+        finishReason = choice.finish_reason;
+        break;
+      }
+    }
+    if (deadline.aborted) throw new OpenAI.APIConnectionTimeoutError();
+    if (!content.trim() || finishReason === "length") {
+      return Response.json({ error: "分析输出不完整，请重试或减少图片数量" }, { status: 502 });
+    }
     let parsedContent;
     try {
       parsedContent = JSON.parse(content || "{}");
@@ -129,9 +143,9 @@ ${FULL_SCHEMA}
       parsedContent = JSON.parse(cleanedContent);
     }
 
-    return NextResponse.json(parsedContent, { headers: { "Cache-Control": "no-store" } });
+    return Response.json(parsedContent, { headers: { "Cache-Control": "no-store" } });
 
   } catch (error: unknown) {
-    return aiErrorResponse(error);
+    return aiErrorResponse(error, CONFIG.model);
   }
 }
