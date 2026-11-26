@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { requestAI } from "@/lib/api-request";
 import { 
   UploadCloud, Sparkles, Box, CheckCircle2,
   Clock, Trash2, LayoutGrid, FileText, Download, Loader2, X, RefreshCw
@@ -104,6 +105,7 @@ const ALL_SCREENS = [
 ];
 
 export default function App() {
+  const [apiKey, setApiKey] = useState("");
   const [images, setImages] = useState<ImageItem[]>([]);
   const [aiText, setAiText] = useState("");
   const [isAiWriting, setIsAiWriting] = useState(false);
@@ -255,6 +257,10 @@ export default function App() {
 
   // AI 文本分析
   const handleAiWrite = async () => {
+    if (!apiKey.trim()) {
+      alert("请先填写您自己的 API Key");
+      return;
+    }
     if (images.length === 0) {
       alert("请先上传产品图！");
       return;
@@ -267,22 +273,13 @@ export default function App() {
 
     try {
       const allBase64 = images.map(img => img.sourceBase64);
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const data = await requestAI("/api/analyze", apiKey, {
           images: allBase64,
           platform,
           market,
           language,
           visualStyle
-        })
       });
-      
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "分析失败");
-      }
 
       console.log("[AI Analyze Result]", JSON.stringify(data, null, 2));
       setFinalResult(data);
@@ -326,26 +323,21 @@ export default function App() {
   const generateScreen = async (screenKey: string): Promise<{ image: string | null; prompt?: string }> => {
     const allBase64 = images.map(img => img.sourceBase64);
     
-    const res = await fetch("/api/generate-detail", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const data = await requestAI("/api/generate-detail", apiKey, {
         images: allBase64,
         analysis: finalResult,
         screenType: screenKey
-      })
     });
-
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || "生成失败");
-    }
 
     return { image: data.image || null, prompt: data.prompt };
   };
 
   // 生成全部选中屏的详情页图片
   const handleGenerate = async () => {
+    if (!apiKey.trim()) {
+      alert("请先填写您自己的 API Key");
+      return;
+    }
     if (!finalResult) {
       alert("请先点击『AI编写』生成产品分析数据！");
       return;
@@ -483,6 +475,36 @@ export default function App() {
         {/* 左侧配置面板 */}
         <div className="w-[420px] bg-white border-r border-gray-200 flex flex-col shrink-0 z-20 shadow-[2px_0_10px_rgba(0,0,0,0.02)] relative">
           <div className="flex-1 overflow-y-auto p-5 pb-24 relative custom-scrollbar">
+
+            <div className="mb-6">
+              <label htmlFor="api-key" className="block text-sm font-bold text-gray-800 mb-2">
+                <span className="text-red-500 mr-1">*</span>您的 API Key
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="api-key"
+                  type="password"
+                  autoComplete="off"
+                  spellCheck={false}
+                  maxLength={512}
+                  value={apiKey}
+                  onChange={event => setApiKey(event.target.value)}
+                  aria-describedby="api-key-help"
+                  placeholder="填写您自己的模型服务 Key"
+                  className="min-w-0 flex-1 border border-gray-200 rounded-md p-2 text-sm focus:outline-none focus:border-purple-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => setApiKey("")}
+                  disabled={!apiKey}
+                  className="px-2 text-xs text-gray-500 hover:text-red-500 disabled:opacity-50"
+                >清除</button>
+              </div>
+              <p id="api-key-help" className="text-xs text-gray-500 mt-2 leading-relaxed">
+                Key 仅在本页临时使用，刷新即清除，不写入浏览器存储或历史记录。
+                请求由本站后端转发至模型服务（默认 VectorEngine），请填写对应服务的 Key，调用费用由您承担。
+              </p>
+            </div>
             
             {/* 上传多视角图 */}
             <div className="mb-6">

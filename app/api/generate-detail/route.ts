@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import sharp from "sharp";
 import dns from "dns";
+import { aiErrorResponse, readAIRequest } from "../_shared";
 
 dns.setDefaultResultOrder("ipv4first");
 
-export const maxDuration = 120;
+export const maxDuration = 240;
 
 const CONFIG = {
-  baseURL: process.env.API_BASE_URL!,
-  apiKey: process.env.API_KEY!,
+  baseURL: process.env.API_BASE_URL || "https://api.vectorengine.cn/v1",
   model: process.env.GENERATE_API_MODEL || "gemini-3-pro-image-preview"
 };
 
@@ -181,19 +181,20 @@ ${constraints}`
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { images, analysis, screenType } = body;
-
-    if (!images || images.length === 0) {
+    const input = await readAIRequest(request);
+    if (input instanceof Response) return input;
+    const { images, analysis, screenType } = input.body;
+    if (analysis !== undefined && analysis !== null &&
+        (typeof analysis !== "object" || Array.isArray(analysis))) {
       return NextResponse.json(
-        { error: "缺少产品图片" },
+        { error: "产品分析数据格式不正确" },
         { status: 400 }
       );
     }
 
-    if (!screenType) {
+    if (typeof screenType !== "string" || !["cover", "showcase", "display", "material", "details", "specs"].includes(screenType)) {
       return NextResponse.json(
-        { error: "缺少 screenType 参数" },
+        { error: "请选择有效的详情页模块" },
         { status: 400 }
       );
     }
@@ -228,8 +229,10 @@ export async function POST(request: Request) {
 
     const openai = new OpenAI({
       baseURL: CONFIG.baseURL,
-      apiKey: CONFIG.apiKey,
-      maxRetries: 3,
+      apiKey: input.apiKey,
+      logLevel: "off",
+      timeout: 210 * 1000,
+      maxRetries: 0,
       defaultHeaders: {
         "Connection": "close"
       }
@@ -260,7 +263,6 @@ export async function POST(request: Request) {
     // 从响应中提取 base64 图片
     const imgMatch = content.match(/data:image\/([\w]+);base64,([A-Za-z0-9+/=\s]+)/);
     if (!imgMatch) {
-      console.error("No image found in response. Content starts with:", content.substring(0, 200));
       return NextResponse.json(
         { error: "AI 响应中未找到图片数据" },
         { status: 500 }
@@ -269,15 +271,23 @@ export async function POST(request: Request) {
 
     const imageFormat = imgMatch[1];
     const imageBase64 = imgMatch[2].replace(/\s/g, "");
-    const dataUrl = `data:image/${imageFormat};base64,${imageBase64}`;
+    let dataUrl = `data:image/${imageFormat};base64,${imageBase64}`;
+    // Vercel 普通响应上限为 4.5 MB，为 JSON 和提示词留出余量。
+    if (dataUrl.length > 3_500_000) {
+      const compactImage = await sharp(Buffer.from(imageBase64, "base64"))
+        .resize(1500, 3000, { fit: "inside", withoutEnlargement: true })
+        .flatten({ background: "#ffffff" })
+        .jpeg({ quality: 85 })
+        .toBuffer();
+      dataUrl = `data:image/jpeg;base64,${compactImage.toString("base64")}`;
+    }
 
-    return NextResponse.json({ image: dataUrl, prompt });
+    if (Buffer.byteLength(JSON.stringify({ image: dataUrl, prompt }), "utf8") > 4_000_000) {
+      return NextResponse.json({ error: "生成结果体积过大，请减少图片或模块内容后重试" }, { status: 502 });
+    }
+    return NextResponse.json({ image: dataUrl, prompt }, { headers: { "Cache-Control": "no-store" } });
 
-  } catch (error: any) {
-    console.error("Generate detail error:", error);
-    return NextResponse.json(
-      { error: error.message || "图片生成失败" },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return aiErrorResponse(error);
   }
 }

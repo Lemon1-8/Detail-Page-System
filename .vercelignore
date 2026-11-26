@@ -1,0 +1,12 @@
+.env
+.env.*
+.git
+.codex
+.next
+node_modules
+image
+image_test
+白色简约轻奢家居用品促销电商详情页
+tests
+learning_roadmap.md
+docs

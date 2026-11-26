@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import dns from "dns";
+import { aiErrorResponse, readAIRequest } from "../_shared";
 
 // 强制 IPv4 解析，避免代理节点 IPv6 黑洞
 dns.setDefaultResultOrder("ipv4first");
@@ -8,8 +9,7 @@ dns.setDefaultResultOrder("ipv4first");
 export const maxDuration = 240;
 
 const CONFIG = {
-  baseURL: process.env.API_BASE_URL!,
-  apiKey: process.env.API_KEY!,
+  baseURL: process.env.API_BASE_URL || "https://api.vectorengine.cn/v1",
   model: process.env.ANALYZE_API_MODEL || "gemini-3.1-flash-lite-preview"
 };
 
@@ -49,21 +49,23 @@ const FULL_SCHEMA = `{
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { images, platform, market, language, visualStyle } = body;
-
-    if (!images || images.length === 0) {
+    const input = await readAIRequest(request);
+    if (input instanceof Response) return input;
+    const { images, platform, market, language, visualStyle } = input.body;
+    if ([platform, market, language, visualStyle].some(value =>
+      value !== undefined && (typeof value !== "string" || value.length > 500))) {
       return NextResponse.json(
-        { error: "缺少必要参数 (图片)" },
+        { error: "市场配置格式不正确" },
         { status: 400 }
       );
     }
 
     const openai = new OpenAI({
       baseURL: CONFIG.baseURL,
-      apiKey: CONFIG.apiKey,
-      timeout: 120 * 1000,
-      maxRetries: 3,
+      apiKey: input.apiKey,
+      logLevel: "off",
+      timeout: 210 * 1000,
+      maxRetries: 0,
       defaultHeaders: {
         "Connection": "close"
       }
@@ -122,18 +124,14 @@ ${FULL_SCHEMA}
     let parsedContent;
     try {
       parsedContent = JSON.parse(content || "{}");
-    } catch (e) {
+    } catch {
       const cleanedContent = (content || "{}").replace(/```json/g, "").replace(/```/g, "").trim();
       parsedContent = JSON.parse(cleanedContent);
     }
 
-    return NextResponse.json(parsedContent);
+    return NextResponse.json(parsedContent, { headers: { "Cache-Control": "no-store" } });
 
-  } catch (error: any) {
-    console.error("AI Analysis Error:", error);
-    return NextResponse.json(
-      { error: error.message || "分析失败，请检查网络或配置" },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return aiErrorResponse(error);
   }
 }
