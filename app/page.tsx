@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { requestAI } from "@/lib/api-request";
+import { DEFAULT_API_BASE_URL } from "@/lib/api-base-url";
 import { 
   UploadCloud, Sparkles, Box, CheckCircle2,
   Clock, Trash2, LayoutGrid, FileText, Download, Loader2, X, RefreshCw
@@ -105,6 +106,7 @@ const ALL_SCREENS = [
 ];
 
 export default function App() {
+  const [apiBaseUrl, setApiBaseUrl] = useState(DEFAULT_API_BASE_URL);
   const [apiKey, setApiKey] = useState("");
   const [images, setImages] = useState<ImageItem[]>([]);
   const [aiText, setAiText] = useState("");
@@ -279,7 +281,7 @@ export default function App() {
           market,
           language,
           visualStyle
-      });
+      }, apiBaseUrl);
 
       console.log("[AI Analyze Result]", JSON.stringify(data, null, 2));
       setFinalResult(data);
@@ -327,7 +329,7 @@ export default function App() {
         images: allBase64,
         analysis: finalResult,
         screenType: screenKey
-    });
+    }, apiBaseUrl);
 
     return { image: data.image || null, prompt: data.prompt };
   };
@@ -477,6 +479,27 @@ export default function App() {
           <div className="flex-1 overflow-y-auto p-5 pb-24 relative custom-scrollbar">
 
             <div className="mb-6">
+              <label htmlFor="api-base-url" className="block text-sm font-bold text-gray-800 mb-2">
+                <span className="text-red-500 mr-1">*</span>API 请求地址
+              </label>
+              <input
+                id="api-base-url"
+                type="url"
+                autoComplete="off"
+                spellCheck={false}
+                maxLength={2048}
+                value={apiBaseUrl}
+                onChange={event => setApiBaseUrl(event.target.value)}
+                aria-describedby="api-base-url-help"
+                placeholder={DEFAULT_API_BASE_URL}
+                className="w-full border border-gray-200 rounded-md p-2 text-sm focus:outline-none focus:border-purple-400"
+              />
+              <p id="api-base-url-help" className="text-xs text-gray-500 mt-2 leading-relaxed">
+                分析和出图共用此地址。仅填写您信任的 HTTPS 模型 API 地址，该服务将收到您的 Key 和图片。
+              </p>
+            </div>
+
+            <div className="mb-6">
               <label htmlFor="api-key" className="block text-sm font-bold text-gray-800 mb-2">
                 <span className="text-red-500 mr-1">*</span>您的 API Key
               </label>
@@ -502,7 +525,7 @@ export default function App() {
               </div>
               <p id="api-key-help" className="text-xs text-gray-500 mt-2 leading-relaxed">
                 Key 仅在本页临时使用，刷新即清除，不写入浏览器存储或历史记录。
-                请求由本站后端转发至模型服务（默认 VectorEngine），请填写对应服务的 Key，调用费用由您承担。
+                请求由本站后端转发至您填写的 API 地址，请使用对应服务的 Key，调用费用由您承担。
               </p>
             </div>
             

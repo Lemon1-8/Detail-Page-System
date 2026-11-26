@@ -2,14 +2,13 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import sharp from "sharp";
 import dns from "dns";
-import { aiErrorResponse, readAIRequest } from "../_shared";
+import { aiErrorResponse, apiFetchOptions, readAIRequest } from "../_shared";
 
 dns.setDefaultResultOrder("ipv4first");
 
 export const maxDuration = 240;
 
 const CONFIG = {
-  baseURL: process.env.API_BASE_URL || "https://api.vectorengine.cn/v1",
   model: process.env.GENERATE_API_MODEL || "gemini-3-pro-image-preview"
 };
 
@@ -228,7 +227,8 @@ export async function POST(request: Request) {
     }
 
     const openai = new OpenAI({
-      baseURL: CONFIG.baseURL,
+      baseURL: input.apiBaseUrl,
+      fetchOptions: apiFetchOptions,
       apiKey: input.apiKey,
       logLevel: "off",
       timeout: 210 * 1000,

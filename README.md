@@ -24,11 +24,11 @@ npm run dev
 
 ## 环境配置
 
-访客需在页面中填写自己的 API Key（默认使用 VectorEngine），无需为部署配置共享 Key。Key 只保留在当前页面内存中，刷新或点击“清除”后移除，不写入 localStorage、历史记录或服务端存储。
+访客在页面中填写 API 请求地址和自己的 API Key。请求地址默认预填 `https://www.boxying.com/v1`，可改为其他兼容服务的 HTTPS 公网域名；分析和出图共用这组配置，无需为部署配置共享 Key。Key 只保留在当前页面内存中，刷新或点击“清除”后移除，不写入 localStorage、历史记录或服务端存储。
 
-Key 经 HTTPS 请求头传到本站后端，再转发至固定的模型服务；不会放入网页源码、URL 或错误日志。Key 的持有人仍可通过自己浏览器的开发者工具查看自己的请求，这是正常行为。
+Key 经 HTTPS 请求头传到本站后端，再转发至用户填写的模型服务；不会放入网页源码、URL 或错误日志。模型服务将收到 Key 和图片，请只使用自己信任的服务地址。后端禁止内网和保留 IP，并在建立连接时校验 DNS 结果；不跟随上游重定向。Key 的持有人仍可通过自己浏览器的开发者工具查看自己的请求，这是正常行为。
 
-如需修改模型服务地址或模型名称，可复制环境变量模板：
+如需修改模型名称，可复制环境变量模板：
 
 ```bash
 # 复制环境变量模板
@@ -38,9 +38,6 @@ cp .env.example .env
 然后编辑 `.env` 文件（可选配置，不包含密钥）：
 
 ```env
-# API 配置
-API_BASE_URL=https://api.vectorengine.cn/v1
-
 # 模型配置
 GENERATE_API_MODEL=gemini-3-pro-image-preview
 ANALYZE_API_MODEL=gemini-3.1-flash-lite-preview
@@ -50,7 +47,6 @@ ANALYZE_API_MODEL=gemini-3.1-flash-lite-preview
 
 | 变量名 | 必填 | 说明 |
 |--------|------|------|
-| `API_BASE_URL` | 否 | 服务端固定 AI API 地址，默认 `https://api.vectorengine.cn/v1`；用户 Key 必须与此服务匹配 |
 | `GENERATE_API_MODEL` | 否 | 生成详情页使用的模型，默认 `gemini-3-pro-image-preview` |
 | `ANALYZE_API_MODEL` | 否 | 分析图片使用的模型，默认 `gemini-3.1-flash-lite-preview` |
 
@@ -64,7 +60,7 @@ ANALYZE_API_MODEL=gemini-3.1-flash-lite-preview
 ## 部署到 Vercel
 
 1. 将本次代码提交并推送到 GitHub，在 [Vercel 新建项目](https://vercel.com/new) 中导入仓库，框架选择 Next.js，构建命令保留 `npm run build`，输出目录使用默认值。
-2. 无需设置 API Key。只有更换模型服务时，才填写上述三个非密钥环境变量；服务地址只在后端配置，访客不能随意指定转发地址。
+2. 无需配置服务地址或 API Key，由访客在页面填写。只有更换模型时，才填写上述两个非密钥环境变量；填写的服务须支持相应模型及 OpenAI 兼容接口。
 3. 点击 Deploy，成功后使用项目的正式域名 `项目名.vercel.app` 分享。
 4. 在 Settings → Deployment Protection 中确认正式域名可匿名访问。Standard Protection 会保护预览和部署地址，同时允许正式域名公开访问；All Deployments 会保护正式域名。
 5. 也可在本机登录后运行 `npx vercel@latest --prod` 发布；`.vercelignore` 已排除本地 `.env`、图片素材和测试文件。

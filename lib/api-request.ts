@@ -1,10 +1,12 @@
-export async function requestAI(path: string, apiKey: string, payload: unknown) {
+import { normalizeApiBaseUrl } from "./api-base-url.ts";
+
+export async function requestAI(path: string, apiKey: string, payload: Record<string, unknown>, apiBaseUrl: string) {
   const key = apiKey.trim();
   if (!/^[\x21-\x7e]{1,512}$/.test(key)) {
     throw new Error("请先填写有效的 API Key");
   }
 
-  const body = JSON.stringify(payload);
+  const body = JSON.stringify({ ...payload, apiBaseUrl: normalizeApiBaseUrl(apiBaseUrl) });
   if (new Blob([body]).size > 4_000_000) {
     throw new Error("图片总体积过大，请减少图片后重试");
   }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import dns from "dns";
-import { aiErrorResponse, readAIRequest } from "../_shared";
+import { aiErrorResponse, apiFetchOptions, readAIRequest } from "../_shared";
 
 // 强制 IPv4 解析，避免代理节点 IPv6 黑洞
 dns.setDefaultResultOrder("ipv4first");
@@ -9,7 +9,6 @@ dns.setDefaultResultOrder("ipv4first");
 export const maxDuration = 240;
 
 const CONFIG = {
-  baseURL: process.env.API_BASE_URL || "https://api.vectorengine.cn/v1",
   model: process.env.ANALYZE_API_MODEL || "gemini-3.1-flash-lite-preview"
 };
 
@@ -61,7 +60,8 @@ export async function POST(request: Request) {
     }
 
     const openai = new OpenAI({
-      baseURL: CONFIG.baseURL,
+      baseURL: input.apiBaseUrl,
+      fetchOptions: apiFetchOptions,
       apiKey: input.apiKey,
       logLevel: "off",
       timeout: 210 * 1000,
