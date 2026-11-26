@@ -113,7 +113,7 @@ ${FULL_SCHEMA}
         {
           role: "user",
           content: [
-            { type: "text", text: `请综合分析这${images.length}张家具图片并为其生成详情页文案。` },
+            { type: "text", text: `请综合分析这${images.length}张家具图片，按上述结构返回完整的 JSON 对象，用于生成详情页文案，不要包含其他内容。` },
             ...imageContents
           ],
         },

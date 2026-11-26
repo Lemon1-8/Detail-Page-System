@@ -116,6 +116,17 @@ test("请求超时与模型权限错误分开提示", async () => {
   }
 });
 
+test("上游拒绝参数时报告请求格式问题，不能提示成 Key 权限错误", async () => {
+  const secret = "test-only-upstream-credential";
+  const response = aiErrorResponse(new OpenAI.APIError(400, { code: "upstream_error", message: secret }, secret, new Headers()), "gpt-6.1-sol");
+  assert.equal(response.status, 400);
+  const body = await response.text();
+  assert.ok(body.includes("400"));
+  assert.ok(body.includes("格式"));
+  assert.equal(body.includes("Key"), false);
+  assert.equal(body.includes(secret), false);
+});
+
 test("地址默认值与规范化，拒绝本机、IP、非 HTTPS 及 URL 中的凭据", async () => {
   assert.equal(DEFAULT_API_BASE_URL, "https://www.boxying.com/v1");
   assert.equal(normalizeApiBaseUrl(" https://custom.example:8443/api/v1/// "), "https://custom.example:8443/api/v1");

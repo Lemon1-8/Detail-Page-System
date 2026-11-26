@@ -36,6 +36,9 @@ test("分析使用用户填写的地址和 Key 调用 gpt-6.1-sol Chat Completio
     assert.equal(sent.stream, true);
     assert.equal(sent.messages[1].content[1].image_url.url, dataUrl);
     assert.equal(sent.response_format.type, "json_object");
+    const userText = sent.messages.filter(message => message.role === "user")
+      .flatMap(message => message.content).filter(part => part.type === "text").map(part => part.text).join("\n");
+    assert.match(userText, /\bjson\b/i, "JSON 模式的要求必须出现在用户消息，兼容将系统提示单独转发的服务");
     assert.equal((await response.json()).title, "协议测试");
     dispatcher.assertNoPendingInterceptors();
   } finally {
